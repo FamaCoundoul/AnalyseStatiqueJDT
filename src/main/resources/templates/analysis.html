@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Résultats de l'analyse</title>
+    <link rel="stylesheet" href="/css/style.css">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.25.1/cytoscape.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dagre/0.8.5/dagre.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.3.2/cytoscape-dagre.min.js"></script>
+    <script>
+        // Enregistrer le layout dagre
+        if (typeof cytoscape !== 'undefined' && typeof cytoscapeDagre !== 'undefined') {
+            cytoscape.use(cytoscapeDagre);
+        }
+    </script>
+
+    <style>
+        .tab { display:flex;overflow: hidden; border-bottom: 1px solid #ccc; background-color: #f1f1f1; margin: 20px auto; width: 90%; }
+        .tab button { background-color: #4cc9f0; float: left; border: none; outline: none; cursor: pointer; padding: 12px 20px; transition: 0.3s; font-size: 16px; width: 500px; margin:50px;}
+        .tab button:hover { background-color: #ddd; }
+        .tab button.active { background-color: #2a4b8d; color: white; }
+        .tabcontent { display: none; padding: 20px; border: 1px solid #ccc; border-top: none; width: 90%; margin: auto; background-color: #fff; border-radius: 10px; }
+        table { width: 100%; border-collapse: collapse; }
+        table, th, td { border: 1px solid #ccc; }
+        th, td { padding: 8px; text-align: left; }
+        #cy { width: 100%; height: 700px; border: 1px solid #ccc; margin: 20px auto;overflow: auto; }
+        .legend { display: flex; justify-content: center; margin-bottom: 10px; flex-wrap: wrap; }
+        .legend div { margin: 0 10px; padding: 5px 10px; border-radius: 5px; color: white; font-weight: bold; }
+        .error { color: red; text-align: center; margin: 20px; font-weight: bold; }
+        /* Nouveaux styles pour grouper les métriques */
+        .metric-group { 
+            display: flex; 
+            justify-content: space-around; 
+            flex-wrap: wrap;
+            margin-bottom: 30px;
+        }
+        .metric-group > div {
+            width: 48%; /* Utiliser un peu moins de 50% pour l'espace */
+            min-width: 300px;
+        }
+
+        /* NOUVEAU STYLE pour aligner le titre et le formulaire */
+        .method-threshold-container {
+            display: flex;
+            align-items: center; /* Alignement vertical */
+            margin-top: 30px;
+            margin-bottom: 10px;
+        }
+        .method-threshold-container h3 {
+            margin: 0;
+            padding-right: 15px;
+        }
+        .method-threshold-container button {
+            margin-left: 10px;
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Résultats de l'analyse</h1>
+
+<div th:if="${error}" class="error">
+    <p th:text="${error}"></p>
+</div>
+
+<div class="tab">
+    <button class="tablinks" onclick="openTab(event,'Global')" id="defaultOpen">Analyse globale</button>
+    <button class="tablinks" onclick="openTab(event,'Files')">Analyse par fichier</button>
+    <button class="tablinks" onclick="openTab(event,'Graph')">Graphe d'appel</button>
+    
+</div>
+<a href="/" style="display: block; text-align: center; margin-top: 20px;">&#8592; Retour à l'accueil</a>
+
+<div id="Global" class="tabcontent">
+    <h2>Statistiques générales du projet</h2>
+    <div class="metric-group">
+        <div>
+            <h3>Métriques de Volume</h3>
+            <ul>
+                <li>Total classes : <span th:text="${totalClasses}">0</span></li>
+                <li>Total interfaces : <span th:text="${totalInterfaces}">0</span></li>
+                <li>Total méthodes : <span th:text="${totalMethods}">0</span></li>
+                <li>Total lignes (estimé) : <span th:text="${totalLines}">0</span></li>
+                <li>Total packages distincts : <span th:text="${totalPackage}">0</span></li>
+            </ul>
+        </div>
+        <div>
+            <h3>Métriques de Densité et Complexité</h3>
+            <ul>
+                <li>Moyenne méthodes par classe (%) : <span th:text="${avgMethodsPerClass}">0.00</span></li>
+                <li>Moyenne lignes par méthode (%) : <span th:text="${avgLinesPerMethod}">0.00</span></li>
+                <li>Moyenne attributs par classe (%) : <span th:text="${avgAttributesPerClass}">0.00</span></li>
+                <li>Nombre maximal de paramètres dans une méthode : <span th:text="${maxParameters}">0</span></li>
+            </ul>
+        </div>
+    </div>
+    
+    <h2>Classes de densité maximale (God Object Potential)</h2>
+    <div class="metric-group">
+        <div>
+            <h3> Top classes par méthodes</h3>
+            <ul th:if="${topMethodsClasses.isEmpty()}"><li>Aucune classe trouvée.</li></ul>
+            <ul th:unless="${topMethodsClasses.isEmpty()}">
+                <li th:each="cls : ${topMethodsClasses}" th:text="${cls}">Classe la plus chargée en méthodes</li>
+            </ul>
+        </div>
+        <div>
+            <h3>Top classes par attributs</h3>
+            <ul th:if="${topAttributeClasses.isEmpty()}"><li>Aucune classe trouvée.</li></ul>
+            <ul th:unless="${topAttributeClasses.isEmpty()}">
+                <li th:each="cls : ${topAttributeClasses}" th:text="${cls}">Classe la plus chargée en attributs</li>
+            </ul>
+        </div>
+    </div>
+    
+    <h3>Classes dans les deux catégories (Fort potentiel God Object)</h3>
+    <ul th:if="${intersectionTopClasses.isEmpty()}"><li>Aucune classe n'est dans les deux tops.</li></ul>
+    <ul th:unless="${intersectionTopClasses.isEmpty()}">
+        <li th:each="cls : ${intersectionTopClasses}" th:text="${cls}">Classes à risque de god object</li>
+    </ul>
+
+
+   <h3>Classes avec plus de <span th:text="${xMethods}"></span> méthodes</h3>
+    <div class="method-threshold-container">
+        <form id="xMethodsForm" action="/analyze" method="post" style="display: flex; align-items: center;">
+            <input type="hidden" name="path" id="projectPath" th:value="${projectPath}" /> 
+            
+            <h3>Nombre
+                <input type="number" 
+                       id="xMethodsInput" 
+                       name="xMethods"
+                       th:value="${xMethods}" 
+                       min="1"
+                       placeholder="Seuil"
+                       style="width: 60px; text-align: center; margin: 0 5px;"
+                /> 
+            </h3>
+
+            <button type="button" onclick="handleXMethodsSubmit()">Rechercher</button>
+        </form>
+        <div id="classesOverXMethodsList">
+	        <ul th:if="${classesOverXMethods.isEmpty()}"><li>Aucune classe ne dépasse <span th:text="${xMethods}">10</span> méthodes.</li></ul>
+	        <ul th:unless="${classesOverXMethods.isEmpty()}">
+	            <li th:each="cls : ${classesOverXMethods}" th:text="${cls}">Classe avec trop de méthodes</li>
+	        </ul>
+    	</div>
+    </div>
+    
+    
+</div>
+
+<div id="Files" class="tabcontent">
+    <h2>Analyse par fichier</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Fichier</th>
+                <th>Classes</th>
+                <th>Méthodes</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="entry : ${fileAnalyses}">
+                <td th:text="${entry.key}">NomFichier.java</td>
+                <td th:text="${#strings.arrayJoin(entry.value.classes.toArray(), ', ')}">Classe1</td>
+                <td th:text="${#strings.arrayJoin(entry.value.methods.toArray(), ', ')}">méthode1, méthode2</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<div id="Graph" class="tabcontent">
+    <h2>Graphe d'appel interactif</h2>
+    <div class="legend" id="graphLegend">
+        <div style="background-color:#FFA500">Classe</div>
+        <div style="background-color:#FFB6C1">Méthode (interne)</div>
+        <div style="background-color:#9370db">Méthode (externe)</div>
+    </div>
+    <div id="cy"></div>
+</div>
+
+<script th:inline="javascript">
+/*<![CDATA[*/
+var elements = /*[[${graphJson}]]*/ '[]';
+try { elements = JSON.parse(elements); } catch(e) { console.error(e); elements = []; }
+
+var cy = null;
+
+function initGraph() {
+    if(cy !== null || elements.length === 0) return;
+
+    cy = cytoscape({
+        container: document.getElementById('cy'),
+        elements: elements,
+        style: [
+            {
+                selector: 'node',
+                style: {
+                    'label': 'data(label)',
+                    'text-valign': 'center',
+                    'text-halign': 'center',
+                    'width': 'auto',
+                    'height': 'auto',
+                    'padding': '10px',
+                    'text-wrap': 'wrap',
+                    'font-size': '12px',
+                    'background-color': function(ele) {
+                        return ele.data('type') === 'CLASS' ? '#FFA500' :
+                               ele.data('type') === 'METHOD' ? '#FFB6C1' :
+                               '#9370db';
+                    },
+                    'color':'#fff'
+                }
+            },
+            {
+                selector: 'edge',
+                style: {
+                    'width': 2,
+                    'line-color': '#ccc',
+                    'target-arrow-color': '#ccc',
+                    'target-arrow-shape': 'triangle',
+                    'curve-style': 'bezier'
+                }
+            }
+        ],
+        layout: { 
+            name: 'dagre',
+            rankDir: 'TB', 
+            animate: true 
+        }
+    });
+
+    cy.layout({ name: 'dagre' }).run();
+}
+
+function openTab(evt, tabName) {
+    var i, tabcontent, tablinks;
+    tabcontent = document.getElementsByClassName("tabcontent");
+    for (i = 0; i < tabcontent.length; i++) { tabcontent[i].style.display = "none"; }
+    tablinks = document.getElementsByClassName("tablinks");
+    for (i = 0; i < tablinks.length; i++) { tablinks[i].className = tablinks[i].className.replace(" active", ""); }
+
+    document.getElementById(tabName).style.display = "block";
+    evt.currentTarget.className += " active";
+
+    if(tabName === 'Graph') { setTimeout(initGraph, 100); }
+}
+
+/**
+ * Gère la soumission du formulaire lorsque le bouton est cliqué.
+ * Valide la valeur et soumet le formulaire.
+ */
+function handleXMethodsSubmit() {
+    const inputElement = document.getElementById('xMethodsInput');
+    let value = parseInt(inputElement.value);
+    
+    // Si non numérique ou inférieur à 1, utilise la valeur par défaut 2.
+    if (isNaN(value) || value < 1) {
+        value = 2;
+    }
+    
+    inputElement.value = value; // Assurer que le champ affiche la valeur validée
+    
+    // Soumission du formulaire pour relancer l'analyse avec le nouveau seuil
+    document.getElementById('xMethodsForm').submit();
+}
+
+// Ouvrir l'onglet par défaut au chargement
+window.addEventListener('DOMContentLoaded', () => {
+    document.getElementById("defaultOpen").click();
+});
+/*]]>*/
+</script>
+
+
+
+</body>
+</html>
