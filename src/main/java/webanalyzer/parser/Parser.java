@@ -2,17 +2,22 @@ package webanalyzer.parser;
 
 import org.apache.commons.io.FileUtils;
 import org.eclipse.jdt.core.dom.*;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.stereotype.Service;
+
 import graph.ClassMethodCallVisitor;
 import visiteurs.PackageCounterVisitor;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.*;
 import java.util.stream.Collectors;
 
 /**
  * Analyseur Java par fichier et projet complet avec graphe d'appels.
  */
+@Service
 public class Parser {
 
     // --- Métriques globales ---
@@ -35,6 +40,8 @@ public class Parser {
     private final Map<String, Integer> methodsPerClass = new HashMap<>(); // NOM DE CLASSE -> NOMBRE DE METHODES
     private final Map<String, Integer> attributesPerClass = new HashMap<>(); // NOM DE CLASSE -> NOMBRE D'ATTRIBUTS
 
+    //chemin du projet
+    private String projectPath;
 
     // ===============================================
     // CLASSE INTERNE : ANALYSE PAR FICHIER
@@ -118,6 +125,11 @@ public class Parser {
     // ===============================================
 
     public void analyzeProject(String projectPath) throws IOException {
+    	
+    	if(!projectPath.isEmpty()) {
+    		this.projectPath=projectPath;
+    	}
+    	
         resetMetrics();
         List<File> javaFiles = listJavaFiles(new File(projectPath));
 
@@ -235,15 +247,45 @@ public class Parser {
 
 
     // === Méthodes auxiliaires ===
-    private CompilationUnit createCompilationUnit(String code, String unitName) {
+    public CompilationUnit createCompilationUnit(String code, String unitName) {
         ASTParser parser = ASTParser.newParser(AST.JLS4);
         parser.setKind(ASTParser.K_COMPILATION_UNIT);
         parser.setSource(code.toCharArray());
         parser.setResolveBindings(true);
         parser.setBindingsRecovery(true);
+        parser.setStatementsRecovery(true);
         parser.setUnitName(unitName);
+
+        try {
+            // Récupère le chemin du rt.jar de ton JRE (important sous Java 8)
+            String javaHome = System.getProperty("java.home");
+            String rtJarPath = javaHome + File.separator + "lib" + File.separator + "rt.jar";
+
+            // Si le JRE est en mode JDK (comme sur macOS), adapter le chemin
+            File rtJar = new File(rtJarPath);
+            if (!rtJar.exists()) {
+                // macOS JDK 8 stocke souvent les libs dans ../Classes/classes.jar
+                rtJar = new File(javaHome + File.separator + ".." + File.separator + "Classes" + File.separator + "classes.jar");
+            }
+
+            String[] classpathEntries = { rtJar.getAbsolutePath() };
+            String[] sourcepathEntries = { projectPath };
+
+            parser.setEnvironment(
+                    classpathEntries,      // dépendances (runtime du JRE)
+                    sourcepathEntries,     // ton dossier source
+                    null,                  // encodage par défaut
+                    true                   // inclure sous-répertoires
+            );
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
         return (CompilationUnit) parser.createAST(null);
     }
+
+
+
     
     public static List<File> listJavaFiles(File folder) {
         List<File> javaFiles = new ArrayList<>();
@@ -263,4 +305,17 @@ public class Parser {
     private int countLines(TypeDeclaration td) {
         return td.getLength();
     }
+
+	public String getProjectPath() {
+		return projectPath;
+	}
+
+	public void setProjectPath(String projectPath) {
+		this.projectPath = projectPath;
+	}
+
+	
+	
+
+    
 }

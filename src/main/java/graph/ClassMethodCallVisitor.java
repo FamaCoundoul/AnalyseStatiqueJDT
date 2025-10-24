@@ -1,6 +1,10 @@
 package graph;
 
 import org.eclipse.jdt.core.dom.*;
+
+import webanalyzer.parser.Parser;
+import java.io.File;
+import java.io.IOException;
 import java.util.*;
 
 public class ClassMethodCallVisitor extends ASTVisitor {
@@ -32,9 +36,17 @@ public class ClassMethodCallVisitor extends ASTVisitor {
                 @Override
                 public boolean visit(MethodInvocation mi) {
                     String calledName = mi.getName().getIdentifier();
-                    String receiverType = (mi.getExpression() != null && mi.getExpression().resolveTypeBinding() != null)
-                            ? mi.getExpression().resolveTypeBinding().getName()
-                            : "this";
+                    String receiverType = null;
+
+                    if (mi.getExpression() != null && mi.getExpression().resolveTypeBinding() != null) {
+                        receiverType = mi.getExpression().resolveTypeBinding().getName();
+                    } else if (mi.resolveMethodBinding() != null &&
+                               mi.resolveMethodBinding().getDeclaringClass() != null) {
+                        receiverType = mi.resolveMethodBinding().getDeclaringClass().getName();
+                    } else {
+                        receiverType = className; // par défaut : même classe
+                    }
+
                     methods.get(currentMethod).add(new MethodCall(calledName, receiverType));
                     return true;
                 }
@@ -44,6 +56,7 @@ public class ClassMethodCallVisitor extends ASTVisitor {
         return false;
     }
 
+
     public String getClassName() {
         return className;
     }
@@ -51,14 +64,24 @@ public class ClassMethodCallVisitor extends ASTVisitor {
     public Map<String, List<MethodCall>> getMethods() {
         return methods;
     }
+    
 
     public static class MethodCall {
         public String name;
         public String type;
+        private  String receiverClass;
+        private  String methodName;
+
 
         public MethodCall(String name, String type) {
             this.name = name;
             this.type = type;
         }
+        
+       
+        public String getReceiverClass() { return receiverClass; }
+        public String getMethodName() { return methodName; }
     }
+    
+    
 }
