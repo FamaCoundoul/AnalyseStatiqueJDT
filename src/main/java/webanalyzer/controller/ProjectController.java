@@ -8,6 +8,8 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import graph.ClassMethodCallVisitor;
 import webanalyzer.parser.Parser;
+import webanalyzer.service.DendrogramService;
+import webanalyzer.service.ModuleIdentifierService;
 
 import java.io.File;
 import java.io.IOException;
@@ -27,9 +29,7 @@ public class ProjectController {
         return "index";
     }
     
-    
-
-
+   
     /**
      * Analyse le projet et calcule les métriques ainsi que le couplage entre classes.
      */
@@ -38,6 +38,9 @@ public class ProjectController {
 					            @RequestParam(value = "xMethods", defaultValue = "2") int xMethods,
 					            @RequestParam(value = "classA", required = false) String classA,
 					            @RequestParam(value = "classB", required = false) String classB,
+					            @RequestParam(value = "activeTab", required = false) String activeTab,
+
+	                             @RequestParam(value = "threshold", required = false) Double thresholdParam,
 					            Model model) {
         parser = new Parser();
 
@@ -72,12 +75,31 @@ public class ProjectController {
                 classAliasToPath.put(extractClassName(file), file.getAbsolutePath());
             }
             
-            // --- Données Couplage ---
+         
+            	// --- Données Couplage ---
+                
+                model.addAttribute("couplingGraphJson", couplingGraphJson);
+                model.addAttribute("couplingMatrix", couplingMatrix);
+                model.addAttribute("allClasses", classAliases);
+                model.addAttribute("projectPath", path);
+                
+            	
+            //---Identification de module : utiliser le paramètre envoyé par le formulaire (ou valeur par défaut)
+            double threshold = (thresholdParam != null) ? thresholdParam : 0.059;
+            // clamp entre 0 et 1 pour sécurité
+            threshold = Math.max(0.0, Math.min(1.0, threshold));
+            List<Set<String>> modules = ModuleIdentifierService.identifyModules(couplingMap, threshold);
+            model.addAttribute("modules", modules);
+            model.addAttribute("threshold", threshold);
             
-            model.addAttribute("couplingGraphJson", couplingGraphJson);
-            model.addAttribute("couplingMatrix", couplingMatrix);
-            model.addAttribute("allClasses", classAliases);
-            model.addAttribute("projectPath", path);
+            //---Generation du dendrogramme---
+            DendrogramService.Node root = DendrogramService.buildDendrogram(new HashMap<>(couplingMap));
+            List<Map<String, Object>> dendroElements = DendrogramService.toCytoscapeDendrogram(root, 120, 600);
+            ObjectMapper mapper = new ObjectMapper();
+            String dendrogramJson = mapper.writeValueAsString(dendroElements);
+            model.addAttribute("dendrogramJson", dendrogramJson);
+
+            
             
             // --- Si l’utilisateur a sélectionné deux classes ---
             if (classA != null && classB != null) {
@@ -135,10 +157,18 @@ public class ProjectController {
         } catch (IOException e) {
             model.addAttribute("error", "Erreur lors de l'analyse : " + e.getMessage());
         }
+        
+     // Restaure l’onglet actif après soumission
+        if (activeTab == null || activeTab.isEmpty()) {
+            activeTab = "Global"; // par défaut
+        }
+        
+        model.addAttribute("activeTab", activeTab);
 
         return "analysis";
     }
     
+
     
 
 

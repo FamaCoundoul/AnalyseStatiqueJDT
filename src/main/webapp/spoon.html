@@ -2,7 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Résultats de l'analyse</title>
+    <title>Spoon Analyse</title>
     <link rel="stylesheet" href="/css/style.css">
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.25.1/cytoscape.min.js"></script>
@@ -16,7 +16,7 @@
     </script>
 
     <style>
-   		.nav { display:flex; gap:12px; margin-bottom:20px; }
+    	.nav { display:flex; gap:12px; margin-bottom:20px; }
         .btn { padding:8px 12px; background:#4cc9f0; color:#fff; text-decoration:none; border-radius:6px; }
         .btn:hover { background:#2a4b8d; }
         .tab { display:flex;overflow: hidden; border-bottom: 1px solid #ccc; background-color: #f1f1f1; margin: 20px auto; width: 100%; }
@@ -63,134 +63,25 @@
 </head>
 <body>
 
-<h1>Résultats de l'analyse JDT</h1>
+<h1>Spoon Analyse</h1>
 
 <div th:if="${error}" class="error">
     <p th:text="${error}"></p>
 </div>
 
 <div class="tab">
-    <button class="tablinks" onclick="openTab(event,'Global')" id="defaultOpen">Analyse globale</button>
-    <button class="tablinks" onclick="openTab(event,'Files')">Analyse par fichier</button>
-    <button class="tablinks" onclick="openTab(event,'Graph')">Graphe d'appel</button>
     <button class="tablinks" onclick="openTab(event,'CouplageClasse')">Couplage entre Classe </button>
     <button class="tablinks" onclick="openTab(event,'CouplageGraphe')">Graphe Couplage </button>
     <button class="tablinks" onclick="openTab(event,'Module')">Identification des modules</button>
     <button class="tablinks" onclick="openTab(event,'Dendrogram')" >Dendrogramme</button>
- 
-</div>
-<a href="/" style="display: block; text-align: center; margin-top: 20px;">&#8592; Retour à l'accueil</a>
-
-
-
-<div id="Global" class="tabcontent">
-    <h2>Statistiques générales du projet</h2>
-    <div class="metric-group">
-        <div>
-            <h3>Métriques de Volume</h3>
-            <ul>
-                <li>Total classes : <span th:text="${totalClasses}">0</span></li>
-                <li>Total interfaces : <span th:text="${totalInterfaces}">0</span></li>
-                <li>Total méthodes : <span th:text="${totalMethods}">0</span></li>
-                <li>Total lignes (estimé) : <span th:text="${totalLines}">0</span></li>
-                <li>Total packages distincts : <span th:text="${totalPackage}">0</span></li>
-            </ul>
-        </div>
-        <div>
-            <h3>Métriques de Densité et Complexité</h3>
-            <ul>
-                <li>Moyenne méthodes par classe (%) : <span th:text="${avgMethodsPerClass}">0.00</span></li>
-                <li>Moyenne lignes par méthode (%) : <span th:text="${avgLinesPerMethod}">0.00</span></li>
-                <li>Moyenne attributs par classe (%) : <span th:text="${avgAttributesPerClass}">0.00</span></li>
-                <li>Nombre maximal de paramètres dans une méthode : <span th:text="${maxParameters}">0</span></li>
-            </ul>
-        </div>
-    </div>
-    
-    <h2>Classes de densité maximale (God Object Potential)</h2>
-    <div class="metric-group">
-        <div>
-            <h3> Top classes par méthodes</h3>
-            <ul th:if="${!topMethodsClasses.isEmpty() and topMethodsClasses != null }"><li>Aucune classe trouvée.</li></ul>
-            <ul th:unless="${!topMethodsClasses.isEmpty() and topMethodsClasses != null}">
-                <li th:each="cls : ${topMethodsClasses}" th:text="${cls}">Classe la plus chargée en méthodes</li>
-            </ul>
-        </div>
-        <div>
-            <h3>Top classes par attributs</h3>
-            <ul th:if="${topAttributeClasses.isEmpty()}"><li>Aucune classe trouvée.</li></ul>
-            <ul th:unless="${topAttributeClasses.isEmpty()}">
-                <li th:each="cls : ${topAttributeClasses}" th:text="${cls}">Classe la plus chargée en attributs</li>
-            </ul>
-        </div>
-    </div>
-    
-    <h3>Classes dans les deux catégories (Fort potentiel God Object)</h3>
-    <ul th:if="${intersectionTopClasses.isEmpty()}"><li>Aucune classe n'est dans les deux tops.</li></ul>
-    <ul th:unless="${intersectionTopClasses.isEmpty()}">
-        <li th:each="cls : ${intersectionTopClasses}" th:text="${cls}">Classes à risque de god object</li>
-    </ul>
-
-
-   <h3>Classes avec plus de <span th:text="${xMethods}"></span> méthodes</h3>
-    <div class="method-threshold-container">
-        <form id="xMethodsForm" action="/analyze" method="post" style="display: flex; align-items: center;">
-            <input type="hidden" name="path" id="projectPath" th:value="${projectPath}" /> 
-            <input type="hidden" name="activeTab" value="Global" />
-            
-            <h3>Nombre
-                <input type="number" 
-                       id="xMethodsInput" 
-                       name="xMethods"
-                       th:value="${xMethods}" 
-                       min="1"
-                       placeholder="Seuil"
-                       style="width: 60px; text-align: center; margin: 0 5px;"
-                /> 
-            </h3>
-
-            <button type="button" onclick="handleXMethodsSubmit()">Rechercher</button>
-        </form>
-        <div id="classesOverXMethodsList">
-	        <ul th:if="${classesOverXMethods.isEmpty()}"><li>Aucune classe ne dépasse <span th:text="${xMethods}">10</span> méthodes.</li></ul>
-	        <ul th:unless="${classesOverXMethods.isEmpty()}">
-	            <li th:each="cls : ${classesOverXMethods}" th:text="${cls}">Classe avec trop de méthodes</li>
-	        </ul>
-    	</div>
-    </div>
-    
-    
 </div>
 
-<div id="Files" class="tabcontent">
-    <h2>Analyse par fichier</h2>
-    <table>
-        <thead>
-            <tr>
-                <th>Fichier</th>
-                <th>Classes</th>
-                <th>Méthodes</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr th:each="entry : ${fileAnalyses}">
-                <td th:text="${entry.key}">NomFichier.java</td>
-                <td th:text="${#strings.arrayJoin(entry.value.classes.toArray(), ', ')}">Classe1</td>
-                <td th:text="${#strings.arrayJoin(entry.value.methods.toArray(), ', ')}">méthode1, méthode2</td>
-            </tr>
-        </tbody>
-    </table>
-</div>
 
-<div id="Graph" class="tabcontent">
-    <h2>Graphe d'appel interactif</h2>
-    <div class="legend" id="graphLegend">
-        <div style="background-color:#FFA500">Classe</div>
-        <div style="background-color:#FFB6C1">Méthode (interne)</div>
-        <div style="background-color:#9370db">Méthode (externe)</div>
-    </div>
-    <div id="cy"></div>
-</div>
+<div class="nav">
+        <a href="/" style="display: block; text-align: center; margin-top: 20px;">&#8592; Retour à l'accueil</a>
+        <a href="/analyze" style="display: block; text-align: center; margin-top: 20px;">&#8592;Analyse JDT</a>
+ </div>
+
 
 <div id="CouplageClasse" class="tabcontent">
 
@@ -320,6 +211,13 @@
    </div>
 
 </div>
+
+
+
+
+
+
+
 
 
 
@@ -626,8 +524,7 @@ document.querySelectorAll('.tablinks').forEach(btn => {
 /*]]>*/
 </script>
 
-
-
-
 </body>
 </html>
+
+

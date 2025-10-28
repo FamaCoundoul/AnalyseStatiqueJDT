@@ -54,7 +54,7 @@
 
 
 
-	<dependency>
+	 <dependency>
 	        <groupId>org.springframework.boot</groupId>
 	        <artifactId>spring-boot-starter-web</artifactId>
 	        <version>2.7.18</version>
@@ -91,6 +91,14 @@
 	        <artifactId>spring-boot-starter-web</artifactId>
 	        <version>2.7.18</version>
 	    </dependency>
+	    
+	    <!--Spoon-->
+		<dependency>
+		    <groupId>fr.inria.gforge.spoon</groupId>
+		    <artifactId>spoon-core</artifactId>
+		    <version>11.1.0</version>
+		</dependency>
+
 
 	</dependencies>
 
